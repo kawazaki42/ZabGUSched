@@ -3,6 +3,8 @@ from pprint import pprint
 import pandas as pd
 from tabulate import tabulate
 
+import pathlib
+
 group_table_schema = [
     'day',
     'nlecture',
@@ -22,8 +24,21 @@ lecturer_table_schema = [
     'day',
     'nlecture',
     'week',
-    'group',
     'subgroup',
+    'group',
+    'discipline',
+    'lecture_kind',
+    'lecturer',
+    'department',
+    'classroom'
+]
+
+classroom_table_schema = [
+    'day',
+    'nlecture',
+    'week',
+    'subgroup',
+    'group',
     'discipline',
     'lecture_kind',
     'lecturer',
@@ -32,6 +47,7 @@ lecturer_table_schema = [
 ]
 
 # TODO: CLI
+# schema = classroom_table_schema
 schema = lecturer_table_schema
 # drop = ['department']
 
@@ -40,7 +56,20 @@ wtletter = {
     'н': "lower",
 }
 
-table = pd.read_html('source.html', flavor='html5lib', header=0)[0]
+tables = []
+
+for file in pathlib.Path('sources').iterdir():
+    if not file.is_file():
+        continue
+
+    table = pd.read_html(file, flavor='html5lib', header=0)[0]
+
+    tables.append(table)
+
+table = pd.concat(tables)
+table.reset_index(inplace=True, drop=True)
+
+# table = pd.read_html('sources/sources.html', flavor='html5lib', header=0)[0]
 
 if len(table.columns) != len(schema):
     print(
@@ -55,19 +84,24 @@ weeks = table.groupby('week', sort=False)
 weeks = dict( iter(weeks) )
 assert len(weeks) == 2, 'new week type?'
 
+pd.set_option('display.max_rows', None)
+print(repr(table))
+
 serialized = {}
 
 for wktp, w in weeks.items():
-    # remove column we're grouping by
-    w.drop(columns='week', inplace=True)
+    # # remove column we're grouping by
+    # w.drop(columns='week', inplace=True)
 
-    # strip trailing (not leading) nans in column 'discipline'
-    days = w.groupby('day')
-    for _day, leclist in days.groups.items():
-        for i in reversed(leclist):
-            if w.loc[i].notna()['discipline']:
-                break
-            w.drop(index=i, inplace=True)
+    # # strip trailing (not leading) nans in column 'discipline'
+    # days = w.groupby('day')
+    # # print(days.groups)
+    # for _day, leclist in days.groups.items():
+    #     for i in reversed(leclist):
+    #         # print(w.loc[i].notna())
+    #         if not w.loc[i].notna()['discipline']:
+    #             break
+    #         w.drop(index=i, inplace=True)
 
     # don't display some columns
     w.drop(columns=['lecturer', 'department'], inplace=True)
