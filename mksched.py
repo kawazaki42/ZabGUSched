@@ -5,80 +5,121 @@ from tabulate import tabulate
 
 import pathlib
 
-group_table_schema = [
-    'day',
-    'nlecture',
-    'week',
-    'subgroup',
-    # 'subject',
-    'discipline',
-    'lecture_kind',
-    'lecturer',
-    # 'chair',
-    'department',
-    # 'auditorium',
-    'classroom',
-]
 
-lecturer_table_schema = [
-    'day',
-    'nlecture',
-    'week',
-    'subgroup',
-    'group',
-    'discipline',
-    'lecture_kind',
-    'lecturer',
-    'department',
-    'classroom'
-]
+class Sched:
+    drop = []
 
-classroom_table_schema = [
-    'day',
-    'nlecture',
-    'week',
-    'subgroup',
-    'group',
-    'discipline',
-    'lecture_kind',
-    'lecturer',
-    'department',
-    'classroom'
-]
+    _raw = None
+
+    @property
+    def raw(self):
+        if self._raw is not None:
+            return self._raw
+        # table = pd.read_html('sources/sources.html', flavor='html5lib', header=0)[0]
+
+        tables = []
+
+        for file in pathlib.Path('sources').iterdir():
+            if not file.is_file():
+                continue
+
+            table = pd.read_html(file, flavor='html5lib', header=0)[0]
+
+            tables.append(table)
+
+        self._raw = pd.concat(tables)
+
+        # normalize integer ids
+        self._raw.reset_index(inplace=True, drop=True)
+
+        if len(self._raw.columns) != len(self.headers):
+            print(
+                'Warning: table structure might have been changed!',
+                file=sys.stderr
+            )
+
+        # set internal names instead of displayed ones
+        self._raw.columns = schema
+
+        return self._raw
+
+
+class WeekSeparated:
+    def get_upper():
+        pass
+
+
+
+class SchedByGroup(Sched, WeekSeparated):
+    headers = [
+        'day',
+        'nlecture',
+        'week',
+        'subgroup',
+        # 'subject',
+        'discipline',
+        'lecture_kind',
+        'lecturer',
+        # 'chair',
+        'department',
+        # 'auditorium',
+        'classroom',
+    ],
+
+    drop = [
+        'lecturer',
+        'department',
+    ]
+
+
+class SchedByLecturer(Sched, WeekSeparated):
+    headers = [
+        'day',
+        'nlecture',
+        'week',
+        'subgroup',
+        'group',
+        'discipline',
+        'lecture_kind',
+        'lecturer',
+        'department',
+        'classroom'
+    ],
+
+    drop = [
+        'lecturer',
+        'department',
+    ]
+
+
+class SchedByClassroom(Sched):
+    headers = [
+        'day',
+        'nlecture',
+        'week',
+        'subgroup',
+        'group',
+        'discipline',
+        'lecture_kind',
+        'lecturer',
+        'department',
+        'classroom'
+    ]
+
+    drop = [
+        'classroom',
+    ]
+
 
 # TODO: CLI
 # schema = classroom_table_schema
-schema = lecturer_table_schema
+# schema = lecturer_table_schema
 # drop = ['department']
 
 wtletter = {
     "в": "upper",
     'н': "lower",
 }
-
-tables = []
-
-for file in pathlib.Path('sources').iterdir():
-    if not file.is_file():
-        continue
-
-    table = pd.read_html(file, flavor='html5lib', header=0)[0]
-
-    tables.append(table)
-
-table = pd.concat(tables)
-table.reset_index(inplace=True, drop=True)
-
-# table = pd.read_html('sources/sources.html', flavor='html5lib', header=0)[0]
-
-if len(table.columns) != len(schema):
-    print(
-        'Warning: table structure might have been changed!',
-        file=sys.stderr
-    )
-
-# set internal names instead of displayed oness
-table.columns = schema
 
 weeks = table.groupby('week', sort=False)
 weeks = dict( iter(weeks) )
