@@ -10,9 +10,21 @@ from tabulate import tabulate
 
 
 class Sched:
+    headers = []
     drop = []
 
     input_path = "sources"
+
+    translate_headers = dict(
+        nlecture="№",
+        group="группа",
+        subgroup="п/гр",
+        discipline="предмет",
+        lecture_kind="тип занятия",
+        lecturer="преподаватель",
+        department="кафедра",
+        classroom="аудитория",
+    )
 
     _raw = None
 
@@ -139,10 +151,20 @@ class Sched:
 
 
 class WeekSeparated(Sched):
-    week_labels = {
+    week_filename = {
         "в": "upper",
         "н": "lower",
     }
+
+    week_filename_invert = dict(
+        в="lower",
+        н="upper",
+    )
+
+    week_fullname = dict(
+        в="верхняя неделя",
+        н="нижняя неделя",
+    )
 
     def by_week(self):
         for dname, day in self.by_day():
@@ -173,8 +195,8 @@ class WeekSeparated(Sched):
             self._print_one_week(
                 "в",
                 prefix.format(
-                    header=wkdisplay["в"].capitalize(),
-                    invert_link=invert["в"] + ".md",
+                    header=self.week_fullname["в"].capitalize(),
+                    invert_link=self.week_filename_invert["в"] + ".md",
                 ),
             )
 
@@ -185,8 +207,8 @@ class WeekSeparated(Sched):
             self._print_one_week(
                 "н",
                 prefix.format(
-                    header=wkdisplay["н"].capitalize(),
-                    invert_link=invert["н"] + ".md",
+                    header=self.week_fullname["н"].capitalize(),
+                    invert_link=self.week_filename_invert["н"] + ".md",
                 ),
             )
 
@@ -257,26 +279,5 @@ class SchedByClassroom(Sched):
         "classroom",
     ]
 
-
-headermap = dict(
-    nlecture="№",
-    group="группа",
-    subgroup="п/гр",
-    discipline="предмет",
-    lecture_kind="тип занятия",
-    lecturer="преподаватель",
-    department="кафедра",
-    classroom="аудитория",
-)
-
-wkdisplay = dict(
-    в="верхняя неделя",
-    н="нижняя неделя",
-)
-
-invert = dict(
-    в="lower",
-    н="upper",
-)
 
 SchedByLecturer().dump()
