@@ -127,6 +127,9 @@ class Sched:
             new_reclist.setdefault(i + 1, dict(nlecture=i + 1, discipline="пусто"))
 
         new_reclist = [new_reclist[i + 1] for i in range(6)]
+        new_reclist = [
+            {self.translate_headers[k]: v for k, v in d.items()} for d in new_reclist
+        ]
         # TODO: translate
 
         pprint(new_reclist, stream=sys.stderr)
@@ -148,6 +151,14 @@ class Sched:
             dname=dname,
             table=table,
         )
+
+    def dump(self):
+        with (
+            open("sched.md", "w", encoding="utf8") as f,
+            contextlib.redirect_stdout(f),
+        ):
+            for dname, day in self.by_day():
+                print(self._format_day(dname, day))
 
 
 class WeekSeparated(Sched):
@@ -275,9 +286,10 @@ class SchedByClassroom(Sched):
         "classroom",
     ]
 
-    drop = [
-        "classroom",
-    ]
+    # drop = [
+    #     "classroom",
+    # ]
 
 
-SchedByLecturer().dump()
+# SchedByLecturer().dump()
+SchedByClassroom().dump()
