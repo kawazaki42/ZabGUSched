@@ -291,5 +291,25 @@ class SchedByClassroom(Sched):
     # ]
 
 
-# SchedByLecturer().dump()
-SchedByClassroom().dump()
+# # SchedByLecturer().dump()
+# SchedByClassroom().dump()
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "--by", choices=["group", "lecturer", "classroom"], required=True
+    )
+    args = parser.parse_args()
+
+    classes = dict(
+        group=SchedByGroup,
+        lecturer=SchedByLecturer,
+        classroom=SchedByClassroom,
+    )
+
+    cls = classes[args.by]
+
+    cls().dump()

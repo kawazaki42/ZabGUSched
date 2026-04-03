@@ -1,5 +1,6 @@
-# playwright
+playwright
 pandas
 tabulate
 html5lib  # needed to parse malformed html
 beautifulsoup4
+# duckdb
