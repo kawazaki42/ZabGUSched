@@ -1,4 +1,5 @@
 import contextlib
+import os
 import pathlib
 import re
 import sys
@@ -13,7 +14,7 @@ class Sched:
     headers = []
     drop = []
 
-    input_path = "sources"
+    input_path: str | os.PathLike = "sources"
 
     translate_headers = dict(
         nlecture="№",
@@ -35,7 +36,13 @@ class Sched:
 
         tables = []
 
-        for file in pathlib.Path(self.input_path).iterdir():
+        p = pathlib.Path(self.input_path)
+        if p.is_dir():
+            files = p.iterdir()
+        else:
+            files = [p]
+
+        for file in files:
             if not file.is_file():
                 continue
 
@@ -161,7 +168,7 @@ class Sched:
                 print(self._format_day(dname, day))
 
 
-class WeekSeparated(Sched):
+class WeekSeparatedSched(Sched):
     week_filename = {
         "в": "upper",
         "н": "lower",
@@ -224,7 +231,7 @@ class WeekSeparated(Sched):
             )
 
 
-class SchedByGroup(WeekSeparated):
+class SchedByGroup(WeekSeparatedSched):
     input_path = "sources/by_group"
 
     headers = [
@@ -248,7 +255,23 @@ class SchedByGroup(WeekSeparated):
     ]
 
 
-class SchedByLecturer(WeekSeparated):
+class SchedByGroupDistant(Sched):
+    input_path = "sources/by_group"
+
+    headers = [
+        "day",
+        "nlecture",
+        # "week", # NOTE
+        "group",
+        "discipline",
+        "lecture_kind",
+        "lecturer",
+        "department",
+        "classroom",
+    ]
+
+
+class SchedByLecturer(WeekSeparatedSched):
     input_path = "sources/by_lecturer"
 
     headers = [
@@ -270,7 +293,28 @@ class SchedByLecturer(WeekSeparated):
     ]
 
 
-class SchedByClassroom(Sched):
+class SchedByLecturerDistant(Sched):
+    input_path = "sources/by_lecturer"
+
+    headers = [
+        "day",
+        "nlecture",
+        # "week", # NOTE
+        "group",
+        "discipline",
+        "lecture_kind",
+        "lecturer",
+        "department",
+        "classroom",
+    ]
+
+    drop = [
+        "lecturer",
+        "department",
+    ]
+
+
+class SchedByClassroom(WeekSeparatedSched):
     input_path = "sources/by_classroom"
 
     headers = [
@@ -286,13 +330,28 @@ class SchedByClassroom(Sched):
         "classroom",
     ]
 
+    # browse multiple at once?
+
     # drop = [
     #     "classroom",
     # ]
 
 
-# # SchedByLecturer().dump()
-# SchedByClassroom().dump()
+class SchedByClassroomDistant(Sched):
+    input_path = "sources/by_classroom"
+
+    headers = [
+        "day",
+        "nlecture",
+        # "week", # NOTE
+        "group",
+        "discipline",
+        "lecture_kind",
+        "lecturer",
+        "department",
+        "classroom",
+    ]
+
 
 if __name__ == "__main__":
     import argparse
@@ -302,14 +361,37 @@ if __name__ == "__main__":
     parser.add_argument(
         "--by", choices=["group", "lecturer", "classroom"], required=True
     )
+    parser.add_argument("--distant", action="store_true")
+    parser.add_argument("--fetch", action="store_true")
+
     args = parser.parse_args()
 
-    classes = dict(
-        group=SchedByGroup,
-        lecturer=SchedByLecturer,
-        classroom=SchedByClassroom,
-    )
+    # classes = dict(
+    #     group=SchedByGroup,
+    #     lecturer=SchedByLecturer,
+    #     classroom=SchedByClassroom,
+    # )
 
-    cls = classes[args.by]
+    # cls = classes[args.by]
 
-    cls().dump()
+    path = None
+    if args.fetch:
+        import download
+
+        path = download.main(args.by, args.distant)
+
+    cls = None
+    match args.by:
+        case "group":
+            cls = SchedByGroup if not args.distant else SchedByGroupDistant
+        case "lecturer":
+            cls = SchedByLecturer if not args.distant else SchedByLecturerDistant
+        case "classroom":
+            cls = SchedByClassroom if not args.distant else SchedByClassroomDistant
+        case _:
+            raise ValueError
+
+    inst = cls()
+    if path:
+        inst.input_path = path
+    inst.dump()
