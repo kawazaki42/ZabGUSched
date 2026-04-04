@@ -3,3 +3,8 @@
 /lib64
 /include
 /pyvenv.cfg
+
+/sources/
+/output/
+
+__pycache__/
