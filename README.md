@@ -6,3 +6,11 @@
 - задать имя выходного файла
 - баг с подргуппами!
 - порядок столбцов
+
+# Установка
+```bash
+uv venv
+source .venv/bin/activate
+uv pip install -r requirements.txt
+playwright install
+```
