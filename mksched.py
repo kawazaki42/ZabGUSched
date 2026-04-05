@@ -4,6 +4,7 @@
 import contextlib
 import itertools
 import logging
+import math
 import os
 import re
 import textwrap
@@ -177,6 +178,11 @@ class Sched:
             recs = grouped.get(oi, [defaults | dict(nlecture=oi)])
 
             recs.sort(key=lambda rec: rec["subgroup"])
+
+            for r in recs:
+                match r["subgroup"]:
+                    case float(f) if math.isnan(f):
+                        r["subgroup"] = None
 
             new_reclist.extend(recs)
 
