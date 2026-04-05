@@ -14,3 +14,10 @@ source .venv/bin/activate
 uv pip install -r requirements.txt
 playwright install
 ```
+
+# Использование
+
+**Скачать раписание группы очников**
+```bash
+python mksched.py --by group --fetch
+```
