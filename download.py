@@ -1,4 +1,5 @@
 import argparse
+import logging
 import pathlib
 
 # import re
@@ -7,7 +8,20 @@ from playwright.sync_api import sync_playwright
 URL = "https://zabgu.ru/schedule"
 
 
-def choose(choices: list[str]):
+logger = logging.getLogger(__name__)
+# logging.basicConfig(level=logging.INFO)
+
+
+def choose_noninteractive(choices: list[str], pattern: str) -> str:
+    choices = [elem for elem in choices if pattern.casefold() in elem.casefold()]
+
+    if len(choices) != 1:
+        raise ValueError("not unique!")
+
+    return choices[0]
+
+
+def choose_interactive(choices: list[str]) -> str:
     search_in: list[str] = choices
     idx: int | None = None
 
@@ -16,16 +30,16 @@ def choose(choices: list[str]):
             print(f"{i}: {x}")
 
         print("введите номер элемента или текст для поиска")
-        i = input("выбор: ")
+        c = input("выбор: ")
 
-        filter: str | None = None
+        pattern: str | None = None
         try:
-            idx = int(i)
+            idx = int(c)
             if idx < 0:
                 raise ValueError
         except ValueError:
-            filter = i.casefold()
-            choices = [x for x in search_in if filter in x.casefold()]
+            pattern = c.casefold()
+            choices = [elem for elem in search_in if pattern in elem.casefold()]
 
     return choices[idx]
 
@@ -39,24 +53,30 @@ SEARCH_TERMS = dict(
 MAY_BE_DISTANT = frozenset({"lecturer", "classroom"})
 
 
-def get_from_form(by: str, distant: bool = False, show_browser=False):
-    search_term: str = SEARCH_TERMS[by]
-
-    # if distant is None and by in MAY_BE_DISTANT:
-    #     distant = False
+def get_from_form(
+    by: str,
+    distant: bool = False,
+    show_browser=False,
+    search_term: str | None = None,
+):
+    form_search_term = SEARCH_TERMS[by]
 
     with sync_playwright() as p:
         browser = p.firefox.launch(headless=not show_browser)
         page = browser.new_page()
         # 451, y'now.
-        page.goto(URL, timeout=80_000)
+        page.goto(URL, timeout=90_000)
 
-        form = page.locator("form", has_text=search_term)
+        form = page.locator("form", has_text=form_search_term)
 
         select = form.locator("select")
         choices = select.locator("option").all_text_contents()
 
-        opt = choose(choices)
+        if search_term is None:
+            opt = choose_interactive(choices)
+        else:
+            opt = choose_noninteractive(choices, search_term)
+
         select.select_option(opt)
 
         form.get_by_role("button").click()
@@ -70,7 +90,6 @@ def get_from_form(by: str, distant: bool = False, show_browser=False):
                 # `Page.get_by_text` searches for substrings and case-insensetively.
                 #
                 # Need to make sure it doesn't match the opposite choice.
-                # pattern = re.compile("(?!за)очная форма", re.IGNORECASE)
                 pattern = "очная форма"
                 page.get_by_text(pattern).filter(has_not_text="заочная").click()
 
@@ -78,8 +97,8 @@ def get_from_form(by: str, distant: bool = False, show_browser=False):
 
         html = page.content()
 
-        if show_browser:
-            input("press enter to close...")
+        # if show_browser:
+        #     input("press enter to close...")
 
         browser.close()
         return opt, html
@@ -87,26 +106,17 @@ def get_from_form(by: str, distant: bool = False, show_browser=False):
 
 parser = argparse.ArgumentParser()
 
-# group = parser.add_mutually_exclusive_group(required=True)
-# group.add_argument("--group", dest="by", action="store_const", const="груп")
-# group.add_argument("--lecturer", dest="by", action="store_const", const="препод")
-# group.add_argument("--classroom", dest="by", action="store_const", const="аудитор")
 
-# parser.add_argument("out", type=argparse.FileType("w"), nargs="?")
-
-# args = parser.parse_args()
-
-# with args.out as f:
-#     f.write(get_from_form(args.by))
-
-
-def main(by: str, distant: bool = False, show_browser=False):
+def main(
+    by: str, distant: bool = False, *, search_term=None, show_browser=False
+) -> tuple[str, pathlib.Path]:
     # thx for 451ing.
-    print("Please wait...")
+    logger.info("getting data from webpage")
     opt, html = get_from_form(
         by,
         distant=distant,
         show_browser=show_browser,
+        search_term=search_term,
     )
 
     p = pathlib.Path(f"sources/by_{by}/{opt}.html")
@@ -115,16 +125,4 @@ def main(by: str, distant: bool = False, show_browser=False):
 
     p.write_text(html)
 
-    return p
-
-
-if __name__ == "__main__":
-    parser.add_argument(
-        "--by", choices=["group", "lecturer", "classroom"], required=True
-    )
-    parser.add_argument("--show-browser", action="store_true")
-    parser.add_argument("--distant", action="store_true")
-
-    args = parser.parse_args()
-
-    main(args.by, args.distant)
+    return opt, p
