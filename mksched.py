@@ -446,6 +446,12 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        "--timeout",
+        type=float,
+        help="milliseconds to wait before exiting with error. 0 means no limit.",
+    )
+
+    parser.add_argument(
         "--offline", action="store_true", help="use locally downloaded HTML pages [WIP]"
     )
 
@@ -494,6 +500,7 @@ if __name__ == "__main__":
             args.distant,
             search_term=args.target,
             show_browser=args.show_browser,
+            timeout=args.timeout,
         )
     else:
         # TODO: glob escape

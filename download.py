@@ -3,7 +3,7 @@ import logging
 import pathlib
 
 # import re
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import expect, sync_playwright
 
 URL = "https://zabgu.ru/schedule"
 
@@ -52,21 +52,29 @@ SEARCH_TERMS = dict(
 
 MAY_BE_DISTANT = frozenset({"lecturer", "classroom"})
 
+_redirected = None
+
 
 def get_from_form(
     by: str,
     distant: bool = False,
     show_browser=False,
     search_term: str | None = None,
+    timeout: float | None = None,
 ):
     form_search_term = SEARCH_TERMS[by]
 
     with sync_playwright() as p:
         browser = p.firefox.launch(headless=not show_browser)
-        page = browser.new_page()
+        browser_ctx = browser.new_context()
+
+        if timeout is not None:
+            browser_ctx.set_default_timeout(timeout)
+
+        page = browser_ctx.new_page()
         # 451, y'now.
         # page.goto(URL, timeout=90_000)
-        page.goto(URL, wait_until="domcontentloaded")
+        page.goto(URL, wait_until="domcontentloaded", timeout=timeout)
 
         form = page.locator("form", has_text=form_search_term)
 
@@ -83,24 +91,44 @@ def get_from_form(
         form.get_by_role("button").click()
         page.wait_for_load_state()
 
+        def popup_handler(new_page):
+            # nonlocal page
+            global _redirected
+            logger.debug("redirected")
+            logger.debug(new_page)
+            # new_page.wait_for_load_state("domcontentloaded", timeout=timeout)
+            # page = new_page
+            _redirected = new_page
+            # assert page != new_page
+
         if by in MAY_BE_DISTANT:
+            browser_ctx.on("page", popup_handler)
+
             if distant:
                 pattern = "заочная форма"
-                page.get_by_text(pattern).click()
+                locator = page.get_by_text(pattern)
             else:
                 # `Page.get_by_text` searches for substrings and case-insensetively.
                 #
                 # Need to make sure it doesn't match the opposite choice.
                 pattern = "очная форма"
-                page.get_by_text(pattern).filter(has_not_text="заочная").click()
+                locator = page.get_by_text(pattern).filter(has_not_text="заочная")
 
-            page.wait_for_load_state()
+            logger.debug(locator)
+            locator.click(timeout=timeout, no_wait_after=True)
+            if _redirected is not None:
+                page = _redirected
 
+            logger.debug(page)
+            page.wait_for_load_state("domcontentloaded", timeout=timeout)
+
+        # expect(page.locator("table"), "cannot find the table!").to_have_count(1)
         html = page.content()
 
         # if show_browser:
         #     input("press enter to close...")
 
+        browser_ctx.close()
         browser.close()
         return opt, html
 
@@ -109,7 +137,12 @@ parser = argparse.ArgumentParser()
 
 
 def main(
-    by: str, distant: bool = False, *, search_term=None, show_browser=False
+    by: str,
+    distant: bool = False,
+    *,
+    search_term=None,
+    show_browser=False,
+    timeout: float | None = None,
 ) -> tuple[str, pathlib.Path]:
     # thx for 451ing.
     logger.info("getting data from webpage")
@@ -118,6 +151,7 @@ def main(
         distant=distant,
         show_browser=show_browser,
         search_term=search_term,
+        timeout=timeout,
     )
 
     p = pathlib.Path(f"sources/by_{by}/{opt}.html")
