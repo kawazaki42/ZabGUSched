@@ -65,7 +65,8 @@ def get_from_form(
         browser = p.firefox.launch(headless=not show_browser)
         page = browser.new_page()
         # 451, y'now.
-        page.goto(URL, timeout=90_000)
+        # page.goto(URL, timeout=90_000)
+        page.goto(URL, wait_until="domcontentloaded")
 
         form = page.locator("form", has_text=form_search_term)
 
