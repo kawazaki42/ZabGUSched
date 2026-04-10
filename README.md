@@ -1,4 +1,9 @@
-пока что не уверен стоит ли такое публиковать...
+> ```sh
+> $ python -m this | head -1
+> The Zen of Python, by Tim Peters
+> $ python -m this | grep purity
+> Although practicality beats purity.
+> ```
 
 ## TODO
 
