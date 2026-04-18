@@ -114,9 +114,9 @@ class Sched:
 
             n = int(n)
 
-            for i, name in cls.month_names:
+            for i, name in enumerate(cls.month_names):
                 if name.startswith(maybe_month.lower()):
-                    return (maybe_month, n)
+                    return (i, n)
 
         # shouldn't happen
         return day
@@ -142,7 +142,7 @@ class Sched:
         assert self.drop is not None
         assert self.headers is not None
 
-        drop = self.drop + ["day", "week"]
+        drop = self.drop + ["day"] + (["week"] if "week" in self.headers else [])
         headers = [elem for elem in self.headers if elem not in drop]
 
         reclist = (
@@ -177,12 +177,14 @@ class Sched:
             oi = zi + 1
             recs = grouped.get(oi, [defaults | dict(nlecture=oi)])
 
-            recs.sort(key=lambda rec: rec["subgroup"])
+            recs.sort(key=lambda rec: rec.get("subgroup", 0))
 
             for r in recs:
-                match r["subgroup"]:
+                match r.get("subgroups"):
                     case float(f) if math.isnan(f):
                         r["subgroup"] = None
+                    case None:
+                        pass
 
             new_reclist.extend(recs)
 
@@ -190,7 +192,7 @@ class Sched:
             {self.translate_headers[k]: v for k, v in d.items()} for d in new_reclist
         ]
 
-        logger.debug(new_reclist)
+        # logger.debug(new_reclist)
         table = tabulate(
             new_reclist,
             tablefmt="github",

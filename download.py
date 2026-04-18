@@ -1,6 +1,7 @@
 import argparse
 import logging
 import pathlib
+import time
 
 # import re
 from playwright.sync_api import expect, sync_playwright
@@ -52,7 +53,7 @@ SEARCH_TERMS = dict(
 
 MAY_BE_DISTANT = frozenset({"lecturer", "classroom"})
 
-_redirected = None
+_popup = None
 
 
 def get_from_form(
@@ -63,6 +64,10 @@ def get_from_form(
     timeout: float | None = None,
 ):
     form_search_term = SEARCH_TERMS[by]
+    # WAIT_MODE = "domcontentloaded"
+    WAIT_MODE = "load"
+
+    html = None
 
     with sync_playwright() as p:
         browser = p.firefox.launch(headless=not show_browser)
@@ -74,7 +79,7 @@ def get_from_form(
         page = browser_ctx.new_page()
         # 451, y'now.
         # page.goto(URL, timeout=90_000)
-        page.goto(URL, wait_until="domcontentloaded", timeout=timeout)
+        page.goto(URL, wait_until=WAIT_MODE, timeout=timeout)
 
         form = page.locator("form", has_text=form_search_term)
 
@@ -92,17 +97,33 @@ def get_from_form(
         page.wait_for_load_state()
 
         def popup_handler(new_page):
+            #     # nonlocal page
+            # global _popup
             # nonlocal page
-            global _redirected
-            logger.debug("redirected")
+            #     # if new_page == page:
+            #     #     return
+            nonlocal html
+
+            logger.debug("POPUP")
             logger.debug(new_page)
-            # new_page.wait_for_load_state("domcontentloaded", timeout=timeout)
-            # page = new_page
-            _redirected = new_page
-            # assert page != new_page
+
+            new_page.wait_for_load_state(WAIT_MODE, timeout=timeout)
+
+            page = new_page
+
+            expect(page.locator("table"), "cannot find the table!").to_have_count(1)
+            html = html or page.content()
+
+            browser_ctx.close()
+            browser.close()
+            return opt, html
+
+        #     # page = new_page
+        #     _popup = new_page
+        #     # assert page != new_page
 
         if by in MAY_BE_DISTANT:
-            browser_ctx.on("page", popup_handler)
+            # browser_ctx.on("page", popup_handler)
 
             if distant:
                 pattern = "заочная форма"
@@ -114,16 +135,51 @@ def get_from_form(
                 pattern = "очная форма"
                 locator = page.get_by_text(pattern).filter(has_not_text="заочная")
 
-            logger.debug(locator)
-            locator.click(timeout=timeout, no_wait_after=True)
-            if _redirected is not None:
-                page = _redirected
+            # logger.debug(locator)
+            # time.sleep(1)
 
-            logger.debug(page)
-            page.wait_for_load_state("domcontentloaded", timeout=timeout)
+            # locator.click(timeout=timeout)
+            # time.sleep(1)
+
+            with browser_ctx.expect_page(timeout=2_000) as new_page:
+                #     pass
+                #     # page = new_page
+                locator.click(timeout=timeout, no_wait_after=True)
+
+            logger.debug("EVENT VALUE")
+            logger.debug(new_page.value)
+
+            page = new_page.value
+
+            # page.wait_for_load_state(WAIT_MODE, timeout=timeout)
+            # time.sleep(2_000)
+
+            # browser_ctx.browser.contexts
+
+            logger.debug(browser_ctx.pages)
+
+            match browser_ctx.pages:
+                case []:
+                    raise RuntimeError("no tabs open!")
+                case [_]:
+                    logger.debug("single page")
+                    pass
+                case more:
+                    other = set(more) - {page}
+                    if len(other) != 1:
+                        raise RuntimeError("more than one popup")
+
+                    page = other.pop()
+
+            # page.wait_for_load_state("domcontentloaded", timeout=timeout)
+            # if _popup is not None:
+            #     logger.debug("redirected!")
+            #     page = _popup
+            # page.wait_for_load_state("domcontentloaded", timeout=timeout)
+            logger.debug("PAGE IS: %s", page)
 
         # expect(page.locator("table"), "cannot find the table!").to_have_count(1)
-        html = page.content()
+        html = html or page.content()
 
         # if show_browser:
         #     input("press enter to close...")
