@@ -1,7 +1,6 @@
 import argparse
 import logging
 import pathlib
-import time
 
 # import re
 from playwright.sync_api import expect, sync_playwright
@@ -45,11 +44,11 @@ def choose_interactive(choices: list[str]) -> str:
     return choices[idx]
 
 
-SEARCH_TERMS = dict(
-    group="груп",
-    lecturer="препод",
-    classroom="аудитор",
-)
+SEARCH_TERMS = {
+    "group": "груп",
+    "lecturer": "препод",
+    "classroom": "аудитор",
+}
 
 MAY_BE_DISTANT = frozenset({"lecturer", "classroom"})
 
@@ -163,7 +162,6 @@ def get_from_form(
                     raise RuntimeError("no tabs open!")
                 case [_]:
                     logger.debug("single page")
-                    pass
                 case more:
                     other = set(more) - {page}
                     if len(other) != 1:

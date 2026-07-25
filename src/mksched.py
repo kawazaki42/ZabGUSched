@@ -1,6 +1,7 @@
 # import collections.abc
 # import sys
 # from pprint import pprint
+
 import contextlib
 import itertools
 import logging
@@ -9,6 +10,7 @@ import os
 import re
 import textwrap
 from pathlib import Path
+from typing import ClassVar
 
 import pandas as pd
 from tabulate import tabulate
@@ -20,21 +22,21 @@ class Sched:
         if input_path is not None:
             self.input_path = input_path
 
-    headers: list | None = None
-    drop = []
+    headers: ClassVar[list[str] | None] = None
+    drop: ClassVar[list[str]] = []
 
     input_path: str | os.PathLike = "sources"
 
-    translate_headers = dict(
-        nlecture="№",
-        group="группа",
-        subgroup="п/гр",
-        discipline="предмет",
-        lecture_kind="тип занятия",
-        lecturer="преподаватель",
-        department="кафедра",
-        classroom="аудитория",
-    )
+    translate_headers: ClassVar[dict[str, str]] = {
+        "nlecture": "№",
+        "group": "группа",
+        "subgroup": "п/гр",
+        "discipline": "предмет",
+        "lecture_kind": "тип занятия",
+        "lecturer": "преподаватель",
+        "department": "кафедра",
+        "classroom": "аудитория",
+    }
 
     _raw = None
 
@@ -76,7 +78,7 @@ class Sched:
 
         return self._raw
 
-    wkday_names = [
+    wkday_names: ClassVar[list[str]] = [
         "понедельник",
         "вторник",
         "среда",
@@ -86,7 +88,7 @@ class Sched:
         "воскресенье",
     ]
 
-    month_names = [
+    month_names: ClassVar[list[str]] = [
         "январь",
         "февраль",
         "март",
@@ -175,7 +177,7 @@ class Sched:
 
         for zi in range(8):
             oi = zi + 1
-            recs = grouped.get(oi, [defaults | dict(nlecture=oi)])
+            recs = grouped.get(oi, [defaults | {"nlecture": oi}])
 
             recs.sort(key=lambda rec: rec.get("subgroup", 0))
 
@@ -225,20 +227,20 @@ class Sched:
 
 
 class WeekSeparatedSched(Sched):
-    week_filename = {
+    week_filename: ClassVar[dict[str, str]] = {
         "в": "upper",
         "н": "lower",
     }
 
-    week_filename_invert = dict(
-        в="lower",
-        н="upper",
-    )
+    week_filename_invert: ClassVar[dict[str, str]] = {
+        "в": "lower",
+        "н": "upper",
+    }
 
-    week_fullname = dict(
-        в="верхняя неделя",
-        н="нижняя неделя",
-    )
+    week_fullname: ClassVar[dict[str, str]] = {
+        "в": "верхняя неделя",
+        "н": "нижняя неделя",
+    }
 
     def by_week(self):
         for dname, day in self.by_day():
@@ -294,7 +296,7 @@ class WeekSeparatedSched(Sched):
 class SchedByGroup(WeekSeparatedSched):
     input_path = "sources/by_group"
 
-    headers = [
+    headers: ClassVar[list[str] | None] = [
         "day",
         "nlecture",
         "week",
@@ -309,7 +311,7 @@ class SchedByGroup(WeekSeparatedSched):
         "classroom",
     ]
 
-    drop = [
+    drop: ClassVar[list[str]] = [
         "lecturer",
         "department",
     ]
@@ -318,7 +320,7 @@ class SchedByGroup(WeekSeparatedSched):
 class SchedByGroupDistant(Sched):
     input_path = "sources/by_group"
 
-    headers = [
+    headers: ClassVar[list[str] | None] = [
         "day",
         "nlecture",
         # "week", # NOTE
@@ -334,7 +336,7 @@ class SchedByGroupDistant(Sched):
 class SchedByLecturer(WeekSeparatedSched):
     input_path = "sources/by_lecturer"
 
-    headers = [
+    headers: ClassVar[list[str] | None] = [
         "day",
         "nlecture",
         "week",
@@ -347,7 +349,7 @@ class SchedByLecturer(WeekSeparatedSched):
         "classroom",
     ]
 
-    drop = [
+    drop: ClassVar[list[str]] = [
         "lecturer",
         "department",
     ]
@@ -356,7 +358,7 @@ class SchedByLecturer(WeekSeparatedSched):
 class SchedByLecturerDistant(Sched):
     input_path = "sources/by_lecturer"
 
-    headers = [
+    headers: ClassVar[list[str] | None] = [
         "day",
         "nlecture",
         # "week", # NOTE
@@ -368,7 +370,7 @@ class SchedByLecturerDistant(Sched):
         "classroom",
     ]
 
-    drop = [
+    drop: ClassVar[list[str]] = [
         "lecturer",
         "department",
     ]
@@ -377,7 +379,7 @@ class SchedByLecturerDistant(Sched):
 class SchedByClassroom(WeekSeparatedSched):
     input_path = "sources/by_classroom"
 
-    headers = [
+    headers: ClassVar[list[str] | None] = [
         "day",
         "nlecture",
         "week",
@@ -400,7 +402,7 @@ class SchedByClassroom(WeekSeparatedSched):
 class SchedByClassroomDistant(Sched):
     input_path = "sources/by_classroom"
 
-    headers = [
+    headers: ClassVar[list[str] | None] = [
         "day",
         "nlecture",
         # "week", # NOTE
